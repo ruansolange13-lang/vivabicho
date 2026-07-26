@@ -1,0 +1,6 @@
+{
+  "name": "ONG Viva Bicho - Gestão de Entrada",
+  "description": "Sistema de gestão e controle de entrada, acolhimento e triagem por espaço físico da ONG Viva Bicho.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

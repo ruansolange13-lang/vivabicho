@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAnimalContext } from '../../context/AnimalContext';
+import { useAuth } from '../../context/AuthContext';
 import { Menu, Plus, Bell, ChevronRight, Dog } from 'lucide-react';
 
 interface HeaderProps {
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onOpenNewAnimalModal }) => {
   const { activeTab, selectedAnimalId, getAnimalById, setSelectedAnimalId } = useAnimalContext();
+  const { profile } = useAuth();
 
   const selectedAnimal = selectedAnimalId ? getAnimalById(selectedAnimalId) : null;
 
@@ -56,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onOpenNewAnima
           >
             <Menu className="w-6 h-6" />
           </button>
-
+          
           <div>
             {selectedAnimal ? (
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -110,10 +112,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onOpenNewAnima
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className="text-left">
-              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Maria Silva</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Coordenadora</p>
-            </div>
+            {profile && (
+              <div className="text-left">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                  {profile.name}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {profile.role === 'admin' ? 'Administrador' : 'Colaborador'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

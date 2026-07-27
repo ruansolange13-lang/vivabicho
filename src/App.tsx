@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AnimalProvider, useAnimalContext } from './context/AnimalContext';
+import { useAuth } from './context/AuthContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -9,6 +10,10 @@ import { AdoptedAnimalsView } from './components/animals/AdoptedAnimalsView';
 import { DeceasedAnimalsView } from './components/animals/DeceasedAnimalsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { AnimalDetailView } from './components/animals/AnimalDetailView';
+
+// Auth Views
+import { LoginView } from './components/auth/LoginView';
+import { FirstAccessChangePasswordView } from './components/auth/FirstAccessChangePasswordView';
 
 // Modals
 import { NewAnimalModal } from './components/modals/NewAnimalModal';
@@ -21,6 +26,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 
 const MainAppContent: React.FC = () => {
   const { activeTab, selectedAnimalId } = useAnimalContext();
+  const { user, profile, loading, signOut } = useAuth();
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -63,6 +69,52 @@ const MainAppContent: React.FC = () => {
     setIsUndoModalOpen(true);
   };
 
+  // 1. Loading State
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-3 text-xs font-semibold text-slate-500">Carregando sistema...</p>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated State
+  if (!user || !profile) {
+    return <LoginView />;
+  }
+
+  // 3. Inactive Account State
+  if (profile.status === 'inactive') {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 font-sans text-slate-900 dark:text-slate-100">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-5 shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-xl font-bold">
+            ⚠️
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold">Conta Desativada</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              O seu perfil de colaborador foi desativado pela coordenação. Entre em contato com um administrador do sistema.
+            </p>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold transition-all"
+          >
+            Voltar para o Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. First Access Change Password State
+  if (profile.first_access) {
+    return <FirstAccessChangePasswordView />;
+  }
+
+  // 5. Normal Authenticated Application
   const renderActiveView = () => {
     if (selectedAnimalId) {
       return (

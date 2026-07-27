@@ -7,6 +7,7 @@ import {
   LOCATION_LABELS 
 } from '../types/animal';
 import { INITIAL_MOCK_ANIMALS } from '../data/mockAnimals';
+import { useAuth } from './AuthContext';
 
 interface ToastInfo {
   id: string;
@@ -43,6 +44,11 @@ interface AnimalContextType {
 const AnimalContext = createContext<AnimalContextType | undefined>(undefined);
 
 export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { profile } = useAuth();
+  const operatorName = profile 
+    ? `${profile.name} (${profile.role === 'admin' ? 'Coordenador' : 'Colaborador'})` 
+    : 'Sistema';
+
   const [animals, setAnimals] = useState<Animal[]>(() => {
     const saved = localStorage.getItem('ong_animais_data_v1');
     if (saved) {
@@ -122,7 +128,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           date: formattedDate,
           title: 'Entrada registrada',
           description: `Animal registrado na ONG. Local inicial: ${initialLocationName}.`,
-          user: 'Maria Silva (Coordenadora)',
+          user: operatorName,
           iconType: 'create'
         }
       ]
@@ -147,7 +153,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: formattedDate,
       title: 'Dados atualizados',
       description: 'Ficha e informações cadastrais atualizadas.',
-      user: 'Maria Silva (Coordenadora)',
+      user: operatorName,
       iconType: 'edit' as const
     };
 
@@ -184,7 +190,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: formattedDate,
       title: 'Mudança de localização',
       description: `${oldLocLabel} → ${newLocLabel}.${observation ? ` Obs: ${observation}` : ''}`,
-      user: 'Maria Silva (Coordenadora)',
+      user: operatorName,
       iconType: 'move' as const
     };
 
@@ -231,7 +237,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: formattedDate,
       title: 'Adoção registrada',
       description: `Adotado por ${details.adopterName} em ${details.adoptionDate}.`,
-      user: 'Maria Silva (Coordenadora)',
+      user: operatorName,
       iconType: 'adopt' as const
     };
 
@@ -272,7 +278,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: formattedDate,
       title: 'Óbito registrado',
       description: `Óbito ocorrido em ${details.deathDate}.${details.notes ? ` Obs: ${details.notes}` : ''}`,
-      user: 'Dra. Camila Santos',
+      user: operatorName,
       iconType: 'death' as const
     };
 
@@ -317,7 +323,7 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: formattedDate,
       title: 'Alteração desfeita',
       description: 'Restaurado o estado anterior do animal.',
-      user: 'Maria Silva (Coordenadora)',
+      user: operatorName,
       iconType: 'undo' as const
     };
 

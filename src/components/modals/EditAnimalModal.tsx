@@ -50,7 +50,9 @@ export const EditAnimalModal: React.FC<EditAnimalModalProps> = ({
 
   if (!isOpen || !animal) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
@@ -58,22 +60,31 @@ export const EditAnimalModal: React.FC<EditAnimalModalProps> = ({
       return;
     }
 
-    updateAnimal(animal.id, {
-      name: name.trim(),
-      microchip: microchip.trim() || undefined,
-      species,
-      sex,
-      age: age.trim() || undefined,
-      weight: weight.trim() ? (weight.trim().toLowerCase().endsWith('kg') ? weight.trim() : `${weight.trim()} kg`) : undefined,
-      origin,
-      originProtocol: originProtocol.trim() || undefined,
-      originNotes: originNotes.trim() || undefined,
-      originTutorName: originTutorName.trim() || undefined,
-      originTutorContact: originTutorContact.trim() || undefined,
-      currentObservation: currentObservation.trim() || undefined
-    });
+    setSubmitting(true);
+    try {
+      const success = await updateAnimal(animal.id, {
+        name: name.trim(),
+        microchip: microchip.trim() || undefined,
+        species,
+        sex,
+        age: age.trim() || undefined,
+        weight: weight.trim() ? (weight.trim().toLowerCase().endsWith('kg') ? weight.trim() : `${weight.trim()} kg`) : undefined,
+        origin,
+        originProtocol: originProtocol.trim() || undefined,
+        originNotes: originNotes.trim() || undefined,
+        originTutorName: originTutorName.trim() || undefined,
+        originTutorContact: originTutorContact.trim() || undefined,
+        currentObservation: currentObservation.trim() || undefined
+      });
 
-    onClose();
+      if (success) {
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -239,10 +250,20 @@ export const EditAnimalModal: React.FC<EditAnimalModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <Check className="w-4 h-4 stroke-[3]" />
-              Salvar Alterações
+              {submitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  Salvar Alterações
+                </>
+              )}
             </button>
           </div>
         </form>

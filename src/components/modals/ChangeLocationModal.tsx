@@ -32,10 +32,21 @@ export const ChangeLocationModal: React.FC<ChangeLocationModalProps> = ({
 
   const currentLocationLabel = LOCATION_LABELS[animal.currentLocation]?.label || animal.currentLocation;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    changeLocation(animal.id, newLocation, observation.trim());
-    onClose();
+    setSubmitting(true);
+    try {
+      const success = await changeLocation(animal.id, newLocation, observation.trim());
+      if (success) {
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -109,10 +120,20 @@ export const ChangeLocationModal: React.FC<ChangeLocationModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <Check className="w-4 h-4 stroke-[3]" />
-              Confirmar Movimentação
+              {submitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  Confirmar Movimentação
+                </>
+              )}
             </button>
           </div>
         </form>

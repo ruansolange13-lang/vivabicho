@@ -24,16 +24,26 @@ export const RegisterDeathModal: React.FC<RegisterDeathModalProps> = ({
 
   if (!isOpen || !animal) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+    try {
+      const success = await registerDeath(animal.id, {
+        deathDate,
+        notes: notes.trim() || undefined
+      });
 
-    registerDeath(animal.id, {
-      deathDate,
-      notes: notes.trim() || undefined
-    });
-
-    onClose();
-    setActiveTab('obito');
+      if (success) {
+        onClose();
+        setActiveTab('obito');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -101,10 +111,20 @@ export const RegisterDeathModal: React.FC<RegisterDeathModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <Check className="w-4 h-4 stroke-[3]" />
-              Confirmar Óbito
+              {submitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  Confirmar Óbito
+                </>
+              )}
             </button>
           </div>
         </form>

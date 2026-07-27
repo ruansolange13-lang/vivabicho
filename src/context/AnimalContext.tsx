@@ -6,8 +6,8 @@ import {
   DeathDetails,
   LOCATION_LABELS 
 } from '../types/animal';
-import { INITIAL_MOCK_ANIMALS } from '../data/mockAnimals';
 import { useAuth } from './AuthContext';
+import { supabase } from './lib/supabase';
 
 interface ToastInfo {
   id: string;
@@ -26,14 +26,16 @@ interface AnimalContextType {
   toasts: ToastInfo[];
   showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   removeToast: (id: string) => void;
+  loading: boolean;
   
-  // Actions
-  addAnimal: (animalData: Omit<Animal, 'id' | 'history' | 'status'>) => string;
-  updateAnimal: (id: string, updatedData: Partial<Animal>) => void;
-  changeLocation: (id: string, newLocation: LocationType, observation?: string) => void;
-  registerAdoption: (id: string, details: { adoptionDate: string; adopterName: string; adopterContact: string; adopterAddress?: string; notes?: string }) => void;
-  registerDeath: (id: string, details: { deathDate: string; notes?: string }) => void;
-  undoLastAction: (id: string) => boolean;
+  // Actions (Async)
+  addAnimal: (animalData: Omit<Animal, 'id' | 'history' | 'status'>) => Promise<string | null>;
+  updateAnimal: (id: string, updatedData: Partial<Animal>) => Promise<boolean>;
+  changeLocation: (id: string, newLocation: LocationType, observation?: string) => Promise<boolean>;
+  registerAdoption: (id: string, details: { adoptionDate: string; adopterName: string; adopterContact: string; adopterAddress?: string; notes?: string }) => Promise<boolean>;
+  registerDeath: (id: string, details: { deathDate: string; notes?: string }) => Promise<boolean>;
+  undoLastAction: (id: string) => Promise<boolean>;
+  deleteAnimal: (id: string) => Promise<boolean>;
   
   // Selectors/Helpers
   getAnimalById: (id: string) => Animal | undefined;
@@ -43,25 +45,140 @@ interface AnimalContextType {
 
 const AnimalContext = createContext<AnimalContextType | undefined>(undefined);
 
+// Helper to validate UUID format
+const validateUuid = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+// Database Mapping Functions
+const mapFromDb = (db: any): Animal => {
+  let entryDate = '';
+  if (db.entry_date) {
+    const parts = db.entry_date.split('-');
+    if (parts.length === 3) {
+      entryDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+
+  let adoptionDetails: AdoptionDetails | undefined = undefined;
+  if (db.adoption_details) {
+    adoptionDetails = {
+      adoptionDate: db.adoption_details.adoptionDate || '',
+      exitDate: db.adoption_details.exitDate || '',
+      adopterName: db.adoption_details.adopterName || '',
+      adopterContact: db.adoption_details.adopterContact || '',
+      adopterAddress: db.adoption_details.adopterAddress || '',
+      notes: db.adoption_details.notes || ''
+    };
+  }
+
+  let deathDetails: DeathDetails | undefined = undefined;
+  if (db.death_details) {
+    deathDetails = {
+      deathDate: db.death_details.deathDate || '',
+      exitDate: db.death_details.exitDate || '',
+      notes: db.death_details.notes || ''
+    };
+  }
+
+  return {
+    id: db.id,
+    name: db.name || 'Sem nome',
+    microchip: db.microchip || '',
+    species: db.species || 'outro',
+    sex: db.sex || 'macho',
+    age: db.age || '',
+    weight: db.weight ? `${db.weight} kg` : '',
+    entryDate,
+    currentLocation: db.current_location || 'area_caes',
+    status: db.status || 'no_abrigo',
+    origin: db.origin || 'nao_informado',
+    originProtocol: db.origin_protocol || '',
+    originNotes: db.origin_notes || '',
+    originTutorName: db.origin_tutor_name || '',
+    originTutorContact: db.origin_tutor_contact || '',
+    currentObservation: db.current_observation || '',
+    history: db.history || [],
+    adoptionDetails,
+    deathDetails,
+    photoUrl: db.photo_url || ''
+  };
+};
+
+const mapToDb = (animal: Animal): any => {
+  let entry_date: string | null = null;
+  if (animal.entryDate) {
+    const parts = animal.entryDate.split(' ')[0].split('/');
+    if (parts.length === 3) {
+      entry_date = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+
+  let weightNum: number | null = null;
+  if (animal.weight) {
+    const cleaned = animal.weight.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleaned);
+    if (!isNaN(parsed)) {
+      weightNum = parsed;
+    }
+  }
+
+  let adoption_details: any = null;
+  if (animal.adoptionDetails) {
+    adoption_details = {
+      adoptionDate: animal.adoptionDetails.adoptionDate,
+      exitDate: animal.adoptionDetails.exitDate,
+      adopterName: animal.adoptionDetails.adopterName,
+      adopterContact: animal.adoptionDetails.adopterContact,
+      adopterAddress: animal.adoptionDetails.adopterAddress || '',
+      notes: animal.adoptionDetails.notes || ''
+    };
+  }
+
+  let death_details: any = null;
+  if (animal.deathDetails) {
+    death_details = {
+      deathDate: animal.deathDetails.deathDate,
+      exitDate: animal.deathDetails.exitDate,
+      notes: animal.deathDetails.notes || ''
+    };
+  }
+
+  const finalId = validateUuid(animal.id) ? animal.id : crypto.randomUUID();
+
+  return {
+    id: finalId,
+    name: animal.name,
+    microchip: animal.microchip || null,
+    species: animal.species,
+    sex: animal.sex,
+    age: animal.age || null,
+    weight: weightNum,
+    entry_date,
+    current_location: animal.currentLocation,
+    status: animal.status,
+    origin: animal.origin,
+    origin_protocol: animal.originProtocol || null,
+    origin_notes: animal.originNotes || null,
+    origin_tutor_name: animal.originTutorName || null,
+    origin_tutor_contact: animal.originTutorContact || null,
+    current_observation: animal.currentObservation || null,
+    history: animal.history || [],
+    adoption_details,
+    death_details,
+    photo_url: animal.photoUrl || null
+  };
+};
+
 export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile } = useAuth();
   const operatorName = profile 
     ? `${profile.name} (${profile.role === 'admin' ? 'Coordenador' : 'Colaborador'})` 
     : 'Sistema';
 
-  const [animals, setAnimals] = useState<Animal[]>(() => {
-    const saved = localStorage.getItem('ong_animais_data_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse saved animal data', e);
-      }
-    }
-    return INITIAL_MOCK_ANIMALS;
-  });
-
-  // Keep an undo stack in memory per animal
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [undoStack, setUndoStack] = useState<Record<string, Animal[]>>({});
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -69,16 +186,10 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [locationFilter, setLocationFilter] = useState<LocationType | null>(null);
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
 
-  // Persist mock state locally to maintain interactions across view switches
-  useEffect(() => {
-    localStorage.setItem('ong_animais_data_v1', JSON.stringify(animals));
-  }, [animals]);
-
+  // Toast notification helper
   const showToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
     const id = 'toast-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5);
     setToasts((prev) => [...prev, { id, message, type }]);
-    
-    // Auto dismiss after 4s
     setTimeout(() => {
       removeToast(id);
     }, 4000);
@@ -111,10 +222,133 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const addAnimal = (animalData: Omit<Animal, 'id' | 'history' | 'status'>): string => {
+  // 1. Initial Load & Realtime Sync Subscription
+  useEffect(() => {
+    if (!profile) {
+      setAnimals([]);
+      setLoading(false);
+      return;
+    }
+
+    const initData = async () => {
+      setLoading(true);
+      try {
+        // Query animals from Supabase
+        const { data: dbData, error: dbError } = await supabase
+          .from('animals')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dbError) throw dbError;
+
+        const remoteAnimals = (dbData || []).map(mapFromDb);
+
+        // Check if there is data in localStorage to migrate (one-time migration)
+        const localSaved = localStorage.getItem('ong_animais_data_v1');
+        let localAnimals: Animal[] = [];
+        if (localSaved) {
+          try {
+            localAnimals = JSON.parse(localSaved);
+          } catch (e) {
+            console.error('Error parsing localStorage backup', e);
+          }
+        }
+
+        // If remote database is empty but local storage has data, perform migration
+        if (remoteAnimals.length === 0 && localAnimals.length > 0) {
+          console.log(`[Migration] Encontrados ${localAnimals.length} animais locais. Iniciando migração...`);
+          showToast(`Migrando ${localAnimals.length} animais para o banco online...`, 'info');
+
+          // Generate valid UUIDs and format properly for each local record
+          const mappedRows = localAnimals.map((la) => {
+            const mapped = mapToDb(la);
+            // Ensure ID is generated as UUID
+            if (!validateUuid(mapped.id)) {
+              mapped.id = crypto.randomUUID();
+            }
+            return mapped;
+          });
+
+          // Insert into Supabase
+          const { error: insertError } = await supabase
+            .from('animals')
+            .insert(mappedRows);
+
+          if (insertError) {
+            showToast('Erro ao migrar animais locais: ' + insertError.message, 'error');
+            setAnimals([]);
+          } else {
+            // Confirm the count matching
+            const { data: verifyData, error: verifyError } = await supabase
+              .from('animals')
+              .select('*')
+              .order('created_at', { ascending: false });
+
+            if (verifyError || !verifyData) {
+              showToast('Migração concluída, mas falha ao verificar banco.', 'error');
+              setAnimals([]);
+            } else {
+              const verifiedAnimals = verifyData.map(mapFromDb);
+              console.log(`[Migration] Concluída. Local: ${localAnimals.length} | Supabase: ${verifiedAnimals.length}`);
+              if (verifiedAnimals.length === localAnimals.length) {
+                showToast(`Sincronização concluída! ${verifiedAnimals.length} animais migrados com sucesso.`, 'success');
+              } else {
+                showToast(`Migração parcial. Supabase: ${verifiedAnimals.length} | Local: ${localAnimals.length}`, 'warning');
+              }
+              setAnimals(verifiedAnimals);
+            }
+          }
+        } else {
+          // Normal case: use remote database records
+          setAnimals(remoteAnimals);
+        }
+      } catch (err: any) {
+        showToast('Erro ao sincronizar banco: ' + (err.message || err), 'error');
+        console.error('Initial load error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initData();
+
+    // Subscribe to Realtime postgres changes
+    const channel = supabase
+      .channel('public:animals')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'animals' },
+        (payload) => {
+          const { eventType, new: newRow, old: oldRow } = payload;
+          if (eventType === 'INSERT') {
+            const mapped = mapFromDb(newRow);
+            setAnimals((prev) => {
+              if (prev.some((a) => a.id === mapped.id)) return prev;
+              return [mapped, ...prev];
+            });
+          } else if (eventType === 'UPDATE') {
+            const mapped = mapFromDb(newRow);
+            setAnimals((prev) =>
+              prev.map((a) => (a.id === mapped.id ? mapped : a))
+            );
+          } else if (eventType === 'DELETE') {
+            setAnimals((prev) => prev.filter((a) => a.id !== oldRow.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
+
+  // Actions (Supabase Writes)
+
+  const addAnimal = async (animalData: Omit<Animal, 'id' | 'history' | 'status'>): Promise<string | null> => {
     const now = new Date();
     const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    const newId = 'anim-' + Date.now().toString().slice(-6);
+    const newId = crypto.randomUUID();
 
     const initialLocationName = LOCATION_LABELS[animalData.currentLocation]?.label || animalData.currentLocation;
 
@@ -134,14 +368,22 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ]
     };
 
-    setAnimals((prev) => [newAnimal, ...prev]);
-    showToast('Animal cadastrado com sucesso.', 'success');
-    return newId;
+    const dbRow = mapToDb(newAnimal);
+
+    try {
+      const { error } = await supabase.from('animals').insert(dbRow);
+      if (error) throw error;
+      showToast('Animal cadastrado com sucesso.', 'success');
+      return newId;
+    } catch (err: any) {
+      showToast('Erro ao cadastrar animal: ' + err.message, 'error');
+      return null;
+    }
   };
 
-  const updateAnimal = (id: string, updatedData: Partial<Animal>) => {
+  const updateAnimal = async (id: string, updatedData: Partial<Animal>): Promise<boolean> => {
     const current = getAnimalById(id);
-    if (!current) return;
+    if (!current) return false;
 
     pushUndoSnapshot(current);
 
@@ -157,25 +399,28 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       iconType: 'edit' as const
     };
 
-    setAnimals((prev) =>
-      prev.map((anim) => {
-        if (anim.id === id) {
-          return {
-            ...anim,
-            ...updatedData,
-            history: [newHistoryEntry, ...anim.history]
-          };
-        }
-        return anim;
-      })
-    );
+    const updatedAnimal: Animal = {
+      ...current,
+      ...updatedData,
+      history: [newHistoryEntry, ...current.history]
+    };
 
-    showToast('Cadastro atualizado com sucesso.', 'success');
+    const dbRow = mapToDb(updatedAnimal);
+
+    try {
+      const { error } = await supabase.from('animals').update(dbRow).eq('id', id);
+      if (error) throw error;
+      showToast('Cadastro atualizado com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao atualizar animal: ' + err.message, 'error');
+      return false;
+    }
   };
 
-  const changeLocation = (id: string, newLocation: LocationType, observation?: string) => {
+  const changeLocation = async (id: string, newLocation: LocationType, observation?: string): Promise<boolean> => {
     const current = getAnimalById(id);
-    if (!current) return;
+    if (!current) return false;
 
     pushUndoSnapshot(current);
 
@@ -194,29 +439,32 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       iconType: 'move' as const
     };
 
-    setAnimals((prev) =>
-      prev.map((anim) => {
-        if (anim.id === id) {
-          return {
-            ...anim,
-            currentLocation: newLocation,
-            currentObservation: observation !== undefined ? observation : anim.currentObservation,
-            history: [newHistoryEntry, ...anim.history]
-          };
-        }
-        return anim;
-      })
-    );
+    const updatedAnimal: Animal = {
+      ...current,
+      currentLocation: newLocation,
+      currentObservation: observation !== undefined ? observation : current.currentObservation,
+      history: [newHistoryEntry, ...current.history]
+    };
 
-    showToast('Localização atualizada com sucesso.', 'success');
+    const dbRow = mapToDb(updatedAnimal);
+
+    try {
+      const { error } = await supabase.from('animals').update(dbRow).eq('id', id);
+      if (error) throw error;
+      showToast('Localização atualizada com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao alterar localização: ' + err.message, 'error');
+      return false;
+    }
   };
 
-  const registerAdoption = (
+  const registerAdoption = async (
     id: string,
     details: { adoptionDate: string; adopterName: string; adopterContact: string; adopterAddress?: string; notes?: string }
-  ) => {
+  ): Promise<boolean> => {
     const current = getAnimalById(id);
-    if (!current) return;
+    if (!current) return false;
 
     pushUndoSnapshot(current);
 
@@ -241,26 +489,29 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       iconType: 'adopt' as const
     };
 
-    setAnimals((prev) =>
-      prev.map((anim) => {
-        if (anim.id === id) {
-          return {
-            ...anim,
-            status: 'adotado',
-            adoptionDetails: adoptionObj,
-            history: [newHistoryEntry, ...anim.history]
-          };
-        }
-        return anim;
-      })
-    );
+    const updatedAnimal: Animal = {
+      ...current,
+      status: 'adotado',
+      adoptionDetails: adoptionObj,
+      history: [newHistoryEntry, ...current.history]
+    };
 
-    showToast('Adoção registrada com sucesso.', 'success');
+    const dbRow = mapToDb(updatedAnimal);
+
+    try {
+      const { error } = await supabase.from('animals').update(dbRow).eq('id', id);
+      if (error) throw error;
+      showToast('Adoção registrada com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao registrar adoção: ' + err.message, 'error');
+      return false;
+    }
   };
 
-  const registerDeath = (id: string, details: { deathDate: string; notes?: string }) => {
+  const registerDeath = async (id: string, details: { deathDate: string; notes?: string }): Promise<boolean> => {
     const current = getAnimalById(id);
-    if (!current) return;
+    if (!current) return false;
 
     pushUndoSnapshot(current);
 
@@ -282,24 +533,27 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       iconType: 'death' as const
     };
 
-    setAnimals((prev) =>
-      prev.map((anim) => {
-        if (anim.id === id) {
-          return {
-            ...anim,
-            status: 'obito',
-            deathDetails: deathObj,
-            history: [newHistoryEntry, ...anim.history]
-          };
-        }
-        return anim;
-      })
-    );
+    const updatedAnimal: Animal = {
+      ...current,
+      status: 'obito',
+      deathDetails: deathObj,
+      history: [newHistoryEntry, ...current.history]
+    };
 
-    showToast('Óbito registrado com sucesso.', 'success');
+    const dbRow = mapToDb(updatedAnimal);
+
+    try {
+      const { error } = await supabase.from('animals').update(dbRow).eq('id', id);
+      if (error) throw error;
+      showToast('Óbito registrado com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao registrar óbito: ' + err.message, 'error');
+      return false;
+    }
   };
 
-  const undoLastAction = (id: string): boolean => {
+  const undoLastAction = async (id: string): Promise<boolean> => {
     const stack = undoStack[id];
     if (!stack || stack.length === 0) {
       showToast('Nenhuma alteração anterior para desfazer.', 'warning');
@@ -308,13 +562,6 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const previousState = stack[stack.length - 1];
 
-    // Pop snapshot
-    setUndoStack((prev) => ({
-      ...prev,
-      [id]: prev[id].slice(0, -1)
-    }));
-
-    // Add undo log
     const now = new Date();
     const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
@@ -332,10 +579,36 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       history: [undoHistoryEntry, ...previousState.history]
     };
 
-    setAnimals((prev) => prev.map((a) => (a.id === id ? restoredAnimal : a)));
+    const dbRow = mapToDb(restoredAnimal);
 
-    showToast('Última alteração desfeita com sucesso.', 'success');
-    return true;
+    try {
+      const { error } = await supabase.from('animals').update(dbRow).eq('id', id);
+      if (error) throw error;
+
+      // Pop snapshot from memory undo stack
+      setUndoStack((prev) => ({
+        ...prev,
+        [id]: prev[id].slice(0, -1)
+      }));
+
+      showToast('Última alteração desfeita com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao desfazer ação: ' + err.message, 'error');
+      return false;
+    }
+  };
+
+  const deleteAnimal = async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('animals').delete().eq('id', id);
+      if (error) throw error;
+      showToast('Animal excluído com sucesso.', 'success');
+      return true;
+    } catch (err: any) {
+      showToast('Erro ao excluir animal: ' + err.message, 'error');
+      return false;
+    }
   };
 
   return (
@@ -351,12 +624,14 @@ export const AnimalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toasts,
         showToast,
         removeToast,
+        loading,
         addAnimal,
         updateAnimal,
         changeLocation,
         registerAdoption,
         registerDeath,
         undoLastAction,
+        deleteAnimal,
         getAnimalById,
         navigateToAnimal,
         navigateToLocationVisualization

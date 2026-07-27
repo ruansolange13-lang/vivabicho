@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAnimalContext } from '../../context/AnimalContext';
 import { X, RotateCcw, AlertTriangle } from 'lucide-react';
 
@@ -19,9 +19,20 @@ export const UndoConfirmModal: React.FC<UndoConfirmModalProps> = ({
 
   if (!isOpen || !animal) return null;
 
-  const handleConfirm = () => {
-    undoLastAction(animal.id);
-    onClose();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      const success = await undoLastAction(animal.id);
+      if (success) {
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -53,11 +64,21 @@ export const UndoConfirmModal: React.FC<UndoConfirmModalProps> = ({
             Cancelar
           </button>
           <button
+            disabled={submitting}
             onClick={handleConfirm}
-            className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+            className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
           >
-            <RotateCcw className="w-4 h-4" />
-            Desfazer alteração
+            {submitting ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Desfazendo...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4" />
+                Desfazer alteração
+              </>
+            )}
           </button>
         </div>
       </div>

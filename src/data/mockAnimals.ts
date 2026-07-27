@@ -23,7 +23,7 @@ export const INITIAL_MOCK_ANIMALS: Animal[] = [
         id: 'h-101',
         date: '20/07/2026 14:30',
         title: 'Entrada registrada',
-        description: 'Entrada efetuada via Guarda Municipal (Protocolo: GM-2026-0841). Local inicial: Internação de Cães.',
+        description: 'Entrada efetuada via Guarda Municipal (Protocolo: GM-2026-0841). Local inicial: Internação Canina.',
         user: 'Dra. Camila Santos',
         iconType: 'create'
       },
@@ -31,7 +31,7 @@ export const INITIAL_MOCK_ANIMALS: Animal[] = [
         id: 'h-102',
         date: '24/07/2026 10:15',
         title: 'Mudança de localização',
-        description: 'Internação de Cães → Área de Cães. Animal liberado da triagem após alta veterinária.',
+        description: 'Internação Canina → Área de Cães. Animal liberado da triagem após alta veterinária.',
         user: 'Marcos Andrade (Tratador)',
         iconType: 'move'
       }
@@ -85,7 +85,7 @@ export const INITIAL_MOCK_ANIMALS: Animal[] = [
         id: 'h-301',
         date: '24/07/2026 18:40',
         title: 'Entrada registrada',
-        description: 'Atendimento de emergência. Localização inicial: Internação de Cães.',
+        description: 'Atendimento de emergência. Localização inicial: Internação Canina.',
         user: 'Dr. Lucas Ferreira',
         iconType: 'create'
       }

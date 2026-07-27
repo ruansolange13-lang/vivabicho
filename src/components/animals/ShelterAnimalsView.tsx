@@ -160,7 +160,7 @@ export const ShelterAnimalsView: React.FC<ShelterAnimalsViewProps> = ({
             >
               <option value="all">Todas as localizações</option>
               <option value="internacao_gatos">Internação de Gatos</option>
-              <option value="internacao_caes">Internação de Cães</option>
+              <option value="internacao_caes">Internação Canina</option>
               <option value="gatil">Gatil</option>
               <option value="area_caes">Área de Cães</option>
             </select>

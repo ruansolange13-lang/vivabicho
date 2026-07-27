@@ -359,7 +359,7 @@ export const NewAnimalModal: React.FC<NewAnimalModalProps> = ({ isOpen, onClose 
               className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="internacao_gatos">Internação Felina</option>
-              <option value="internacao_caes">Internação de Cães</option>
+              <option value="internacao_caes">Internação Canina</option>
               <option value="gatil">Gatil</option>
               <option value="area_caes">Área de Cães</option>
             </select>

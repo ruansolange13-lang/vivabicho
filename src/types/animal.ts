@@ -71,7 +71,7 @@ export const LOCATION_LABELS: Record<LocationType, { label: string; icon: string
     badge: 'bg-amber-100 text-amber-800 border-amber-200'
   },
   internacao_caes: {
-    label: 'Internação de Cães',
+    label: 'Internação Canina',
     icon: '',
     bg: 'bg-rose-500/10 dark:bg-rose-500/20',
     text: 'text-rose-700 dark:text-rose-300',

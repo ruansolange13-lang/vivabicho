@@ -54,9 +54,9 @@ export const NewAnimalModal: React.FC<NewAnimalModalProps> = ({ isOpen, onClose 
   // Current observation
   const [currentObservation, setCurrentObservation] = useState('');
 
-  if (!isOpen) return null;
-
   const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -48,9 +48,9 @@ export const EditAnimalModal: React.FC<EditAnimalModalProps> = ({
     }
   }, [animalId, animal]);
 
-  if (!isOpen || !animal) return null;
-
   const [submitting, setSubmitting] = useState(false);
+
+if (!isOpen || !animal) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

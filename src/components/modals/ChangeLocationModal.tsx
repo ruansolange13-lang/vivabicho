@@ -20,6 +20,7 @@ export const ChangeLocationModal: React.FC<ChangeLocationModalProps> = ({
 
   const [newLocation, setNewLocation] = useState<LocationType>('area_caes');
   const [observation, setObservation] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (animal) {
@@ -31,8 +32,6 @@ export const ChangeLocationModal: React.FC<ChangeLocationModalProps> = ({
   if (!isOpen || !animal) return null;
 
   const currentLocationLabel = LOCATION_LABELS[animal.currentLocation]?.label || animal.currentLocation;
-
-  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

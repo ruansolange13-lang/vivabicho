@@ -17,9 +17,9 @@ export const UndoConfirmModal: React.FC<UndoConfirmModalProps> = ({
 
   const animal = animalId ? getAnimalById(animalId) : null;
 
-  if (!isOpen || !animal) return null;
-
   const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen || !animal) return null;
 
   const handleConfirm = async () => {
     setSubmitting(true);

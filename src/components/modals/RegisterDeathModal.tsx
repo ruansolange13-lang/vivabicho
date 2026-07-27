@@ -21,10 +21,9 @@ export const RegisterDeathModal: React.FC<RegisterDeathModalProps> = ({
 
   const [deathDate, setDeathDate] = useState(todayStr);
   const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen || !animal) return null;
-
-  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

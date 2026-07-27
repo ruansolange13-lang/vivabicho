@@ -10,6 +10,7 @@ export interface Profile {
   status: 'active' | 'inactive';
   first_access: boolean;
   created_at: string;
+  email?: string;
 }
 
 interface AuthContextType {
@@ -17,7 +18,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
-  signIn: (cpf: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -93,13 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signIn = async (cpf: string, password: string) => {
-    const cleanCpf = cpf.replace(/\D/g, '');
-    if (cleanCpf.length !== 11) {
-      return { error: { message: 'O CPF deve conter 11 dígitos numéricos.' } };
-    }
-
-    const email = `cpf${cleanCpf}@vivabicho.local`;
+  const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,

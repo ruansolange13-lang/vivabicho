@@ -57,22 +57,20 @@ serve(async (req) => {
     }
 
     // 4. Parse request parameters
-    const { action, name, cpf, role, target_uid } = await req.json();
+    const { action, name, cpf, role, email, target_uid } = await req.json();
 
     // ACTION A: CREATE USER
     if (action === 'create_user') {
-      if (!name || !cpf || !role) {
-        return new Response(JSON.stringify({ error: 'Nome, CPF e Role são obrigatórios.' }), {
+      if (!name || !cpf || !role || !email) {
+        return new Response(JSON.stringify({ error: 'Nome, E-mail, CPF e Role são obrigatórios.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      const email = `cpf${cpf.replace(/\D/g, '')}@vivabicho.local`;
-
-      // Create authentication credentials
+      // Create authentication credentials using the provided email
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email,
+        email: email.trim(),
         password: '1234',
         email_confirm: true,
         user_metadata: { name }
@@ -85,7 +83,7 @@ serve(async (req) => {
         });
       }
 
-      // Create corresponding row in public.profiles
+      // Create corresponding row in public.profiles (including the email)
       const { error: insertError } = await adminClient
         .from('profiles')
         .insert([{
@@ -94,7 +92,8 @@ serve(async (req) => {
           cpf: cpf.replace(/\D/g, ''),
           role,
           status: 'active',
-          first_access: true
+          first_access: true,
+          email: email.trim()
         }]);
 
       if (insertError) {

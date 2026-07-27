@@ -35,6 +35,7 @@ export const SettingsView: React.FC = () => {
   
   // Admin: Create User state
   const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserCpf, setNewUserCpf] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'common'>('common');
   const [createLoading, setCreateLoading] = useState(false);
@@ -124,8 +125,9 @@ export const SettingsView: React.FC = () => {
       return;
     }
 
-    if (!newUserName.trim()) {
-      setCreateError('Por favor, informe o nome do colaborador.');
+    const cleanEmail = newUserEmail.trim();
+    if (!cleanEmail) {
+      setCreateError('Por favor, informe o e-mail do colaborador.');
       setCreateLoading(false);
       return;
     }
@@ -135,6 +137,7 @@ export const SettingsView: React.FC = () => {
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: {
           action: 'create_user',
+          email: cleanEmail,
           cpf: cleanCpf,
           name: newUserName.trim(),
           role: newUserRole
@@ -146,6 +149,7 @@ export const SettingsView: React.FC = () => {
 
       setCreateSuccess(true);
       setNewUserName('');
+      setNewUserEmail('');
       setNewUserCpf('');
       setNewUserRole('common');
       fetchUsers(); // reload list
@@ -246,9 +250,9 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60">
-                <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">E-mail de Serviço</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">E-mail Cadastrado</span>
                 <p className="font-semibold text-slate-800 dark:text-slate-200 mt-1">
-                  cpf{profile.cpf}@vivabicho.local
+                  {profile.email || 'Não informado'}
                 </p>
               </div>
             </div>
@@ -351,7 +355,7 @@ export const SettingsView: React.FC = () => {
                 </div>
               )}
 
-              <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                     Nome do Colaborador
@@ -362,6 +366,20 @@ export const SettingsView: React.FC = () => {
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
                     placeholder="Ex: Carlos Andrade"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-white text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    E-mail do Colaborador
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="carlos@ong.org"
                     className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-white text-xs font-semibold"
                   />
                 </div>
@@ -397,7 +415,7 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="submit"
                   disabled={createLoading}
-                  className="sm:col-span-3 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
+                  className="sm:col-span-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
                 >
                   {createLoading ? 'Cadastrando no Supabase...' : 'Registrar Novo Usuário'}
                 </button>
@@ -435,6 +453,7 @@ export const SettingsView: React.FC = () => {
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
                         <th className="py-3 px-3">Nome</th>
+                        <th className="py-3 px-3">E-mail</th>
                         <th className="py-3 px-3">CPF</th>
                         <th className="py-3 px-3">Função</th>
                         <th className="py-3 px-3">Status</th>
@@ -446,6 +465,9 @@ export const SettingsView: React.FC = () => {
                         <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850 transition-colors">
                           <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-white">
                             {u.name} {u.id === profile?.id && <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-normal">(Você)</span>}
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400">
+                            {u.email || '-'}
                           </td>
                           <td className="py-3.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-400">
                             {handleCpfFormatter(u.cpf)}

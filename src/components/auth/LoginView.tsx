@@ -1,29 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { KeyRound, FileText, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { KeyRound, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { signIn } = useAuth();
-  const [cpf, setCpf] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Format CPF on change (###.###.###-##)
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
-    
-    // Apply mask
-    if (value.length > 9) {
-      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`;
-    } else if (value.length > 6) {
-      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
-    } else if (value.length > 3) {
-      value = `${value.slice(0, 3)}.${value.slice(3)}`;
-    }
-    setCpf(value);
+  const validateEmail = (emailStr: string) => {
+    return /\S+@\S+\.\S+/.test(emailStr);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,9 +19,9 @@ export const LoginView: React.FC = () => {
     setErrorMsg(null);
     setLoading(true);
 
-    const cleanCpf = cpf.replace(/\D/g, '');
-    if (cleanCpf.length !== 11) {
-      setErrorMsg('Por favor, informe um CPF válido com 11 dígitos.');
+    const cleanEmail = email.trim();
+    if (!validateEmail(cleanEmail)) {
+      setErrorMsg('Por favor, informe um endereço de e-mail válido.');
       setLoading(false);
       return;
     }
@@ -45,10 +33,10 @@ export const LoginView: React.FC = () => {
     }
 
     try {
-      const { error } = await signIn(cleanCpf, password);
+      const { error } = await signIn(cleanEmail, password);
       if (error) {
         if (error.message === 'Invalid login credentials') {
-          setErrorMsg('CPF ou senha inválidos. Verifique as credenciais.');
+          setErrorMsg('E-mail ou senha inválidos. Verifique as credenciais.');
         } else {
           setErrorMsg(error.message || 'Erro inesperado ao realizar login.');
         }
@@ -97,26 +85,26 @@ export const LoginView: React.FC = () => {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* CPF Field */}
+          {/* Email Field */}
           <div className="space-y-1.5">
             <label 
-              htmlFor="login-cpf-input" 
+              htmlFor="login-email-input" 
               className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider"
             >
-              CPF
+              E-mail
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <FileText className="w-4 h-4" />
+                <Mail className="w-4 h-4" />
               </div>
               <input
-                id="login-cpf-input"
-                type="text"
+                id="login-email-input"
+                type="email"
                 required
                 disabled={loading}
-                value={cpf}
-                onChange={handleCpfChange}
-                placeholder="000.000.000-00"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="colaborador@vivabicho.org"
                 className="w-full pl-11 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
               />
             </div>
